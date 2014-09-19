@@ -9,20 +9,21 @@ Requires Redis >= 2.6.12, because it uses the new syntax for SET to easily imple
 
 ## Why another redis lock gem?
 
-I found many others doing the same, for example: [redis-mutex](https://rubygems.org/gems/redis-mutex), [mlanett-redis-lock](https://rubygems.org/gems/mlanett-redis-lock), [redis-lock](https://rubygems.org/gems/redis-lock), [jashmenn-redis-lock](https://rubygems.org/gems/jashmenn-redis-lock), [ruby_redis_lock](https://rubygems.org/gems/ruby_redis_lock), [robust-redis-lock](https://rubygems.org/gems/robust-redis-lock), [bfg-redis-lock](https://rubygems.org/gems/bfg-redis-lock), etc.
+Many others are doing the same. You can find the same functionality in this gems: [redis-mutex](https://rubygems.org/gems/redis-mutex), [mlanett-redis-lock](https://rubygems.org/gems/mlanett-redis-lock), [redis-lock](https://rubygems.org/gems/redis-lock), [jashmenn-redis-lock](https://rubygems.org/gems/jashmenn-redis-lock), [ruby_redis_lock](https://rubygems.org/gems/ruby_redis_lock), [robust-redis-lock](https://rubygems.org/gems/robust-redis-lock), [bfg-redis-lock](https://rubygems.org/gems/bfg-redis-lock), etc.
 
-But I realized it is not easy to know exactly what's going on with those locks. I made this one to be simple, with minimal dependencies and easy to understand.
+But I realized it is not easy to know exactly what's going on with those locks. Then I made this one to be simple but explicit, to be used with confidence in my high scale production applications.
+Also, the only code dependency is the [redis gem](https://rubygems.org/gems/redis).
 
 
 ## Installation
 
 Add this line to your application's Gemfile to install it with `bundle install`:
 
-    gem 'marioizquierdo-redis-lock'
+    gem 'mario-redis-lock'
 
 Or install it yourself as:
 
-    $ gem install marioizquierdo-redis-lock
+    $ gem install mario-redis-lock
 
 
 ## Usage
@@ -55,8 +56,8 @@ else
 end
 ```
 
-The class method `RedisLock.adquire(&block)` makes sure that the lock is released at the end of the block, even if `do_exclusive_stuff` raises an exception.
-But the second alternative is more flexible.
+The class method `RedisLock.adquire(&block)` is more concise as it makes sure to releas the lock at the end of the block, even if `do_exclusive_stuff` raises an exception.
+But the second alternative is a little more flexible.
 
 
 ### Options
@@ -64,7 +65,7 @@ But the second alternative is more flexible.
   * **redis**: (default `Redis.new`) an instance of Redis, or an options hash to initialize an instance of Redis (see [redis gem](https://rubygems.org/gems/redis)). You can also pass anything that "quaks" like redis, for example an instance of [mock_redis](https://rubygems.org/gems/mock_redis), for testing purposes.
   * **key**: (default `"RedisLock::default"`) Redis key to store info about the lock. If you need multiple locks, use a different (unique) key for each lock.
   * **autorelease**: (default `10.0`) seconds to automatically release the lock after being acquired. Make sure it is long enough to execute do the "exclusive stuff", otherwise other processes could get the lock and start messing with the "exclusive stuff" before this one is done. Note that autorelease time is needed even if you are doing `lock.realease`, because the process could crash before releasing the lock.
-  * **retry: (default `true`) boolean to enable/disable multiple acquire retries.
+  * **retry**: (default `true`) boolean to enable/disable consecutive blocking acquire retries. If true, use `retry_timeout` and `retry_sleep` to specify how long and hot often should the `acquire` method be blocking the thread until is able to get the lock.
   * **retry_timeout**: (default `10.0`) time in seconds to specify how long should this thread be waiting for the lock to be released. Note that this thread is blocked while waiting. For a non-blocking approach, set `retry` to false.
   * **retry_sleep**: (default `0.1`) seconds to sleep between retries. For example: `RedisLock.adquire(retry_timeout: 10.0, retry_sleep: 0.1) do |lock|`, in the worst case scenario, will do 99 or 100 retries (one every 100 milliseconds, plus a little extra for the acquire attempt) during 10 seconds, and finally yield with `lock.acquired? == false`.
 
@@ -108,11 +109,10 @@ end
 
 ### Example: Shared Photo Booth that can only take one photo at a time
 
-Let's assume we have a "PhotoBooth" shared resource that can be used only by one process thread at a time.
-We can implement this using with a `RedisLock`:
+If we have a `PhotoBooth` shared resource, we can use a `RedisLock` to ensure it is used only by one thread at a time:
 
 ```ruby
-require 'marioizquierdo-redis-lock'
+require 'mario-redis-lock'
 require 'photo_booth' # made up shared resource
 
 RedisLock.configure do |conf|
@@ -164,7 +164,7 @@ end
 Whith this method, it is easy to optimize slow operations by caching them in Redis.
 For example, if you want to do a `heavy_database_query`:
 
-```
+```ruby
 require 'redis'
 redis = Redis.new(url: "redis://:p4ssw0rd@host:6380")
 
@@ -181,7 +181,7 @@ Avoid this problem with a `RedisLock`:
 
 ```ruby
 require 'redis'
-require 'marioizquierdo-redis-lock'
+require 'mario-redis-lock'
 redis = Redis.new(url: "redis://:p4ssw0rd@host:6380")
 
 val = nil

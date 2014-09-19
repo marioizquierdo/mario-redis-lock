@@ -7,10 +7,10 @@ Gem::Specification.new do |spec|
   spec.name          = "mario-redis-lock"
   spec.version       = Mario::Redis::Lock::VERSION
   spec.authors       = ["Mario Izquierdo"]
-  spec.email         = ["mario@lindenlab.com"]
-  spec.summary       = %q{TODO: Write a short summary. Required.}
-  spec.description   = %q{TODO: Write a longer description. Optional.}
-  spec.homepage      = ""
+  spec.email         = ["tomario@gmail.com"]
+  spec.summary       = %q{Yet another distributed lock for Ruby using Redis.}
+  spec.description   = %q{Yet another distributed lock for Ruby using Redis, with emphasis in the documentation. Requires Redis >= 2.6.12, because it uses the new syntax for SET to easily implement the robust algorithm described in the SET command documentation (http://redis.io/commands/set).}
+  spec.homepage      = "https://github.com/marioizquierdo/mario-redis-lock"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
