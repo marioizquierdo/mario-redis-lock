@@ -19,6 +19,7 @@ class RedisLock
     attr_accessor attr
   end
   attr_accessor :acquired_token # if the lock was successfully acquired, this is the token used to identify the lock. False otherwise.
+  attr_accessor :last_acquire_retries # info about how many times had to retry to acquire the lock on the last call to acquire. First try counts as 0
 
   # Configure default values
   def self.configure
@@ -46,7 +47,7 @@ class RedisLock
     invalid_opts = opts.keys - allowed_opts
     raise ArgumentError("Invalid options: #{invalid_opts.inspect}. Please use one of #{allowed_opts.inspect} ") unless invalid_opts.empty?
 
-    # Set attributes from options and defaults
+    # Set attributes from options or defaults
     self.redis = opts[:redis] || @@defaults.redis || Redis.new
     self.redis = Redis.new(redis) if redis.is_a? Hash # allow to use Redis options instead of a redis instance
     self.key           = opts[:key] || @@defaults.key
@@ -59,19 +60,38 @@ class RedisLock
   # Try to acquire the lock.
   # Retrun true on success, false on failure (someone else has the lock)
   def acquire
-    token = SecureRandom.uuid
-    if redis.set(key, token, 'NX', 'EX', autorelease) # See lock pattern on http://redis.io/commands/SET
-      self.acquired_token = token
+    @first_try_time ||= Time.now
+    @token ||= "#{@first_try_time}-#{rand 999999}" # token is used to make sure that we own the lock when releasing it
+    @retries ||= 0
+
+    # Lock using a redis key, if not exists (NX) with an expiration time (EX).
+    # NOTE that the NX and EX options are not supported by REDIS versions older than 2.6.12
+    # See lock pattern: http://redis.io/commands/SET
+    if redis.set(key, @token, nx: true, ex: autorelease)
+      self.acquired_token = @token # assign acquired_token
+
     else
-      self.acquired_token = nil
+      self.acquired_token = nil # clear acquired_token, to make the acquired? method return false
+
+      # Wait and try again if retry option is set and didn't timeout
+      if self.retry and (Time.now - @first_try_time) < retry_timeout
+        sleep retry_sleep # wait
+        @retries += 1
+        return acquire # and try again
+      end
     end
-    self.acquired?
+
+    self.last_acquire_retries = @retries
+    @retries = nil # reset retries
+    @first_try_time = nil # reset timestamp
+
+    return self.acquired?
   end
 
   # Release the lock.
   # Returns a Symbol with the status of the operation:
   #   * :success if properly released
-  #   * :already_released if the lock was already released or is being used by other process
+  #   * :already_released if the lock was already released or expired (other process could be using it now)
   #   * :not_acquired if the lock was not acquired (no release action was made because it was not needed)
   def release
     if acquired?
