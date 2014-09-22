@@ -33,7 +33,7 @@ Acquire the lock to do "exclusive stuff":
 ```ruby
 RedisLock.adquire do |lock|
   if lock.acquired?
-    do_exclusive_stuff # you are the one
+    do_exclusive_stuff # you are the one with the lock, hooray!
   else
     oh_well # someone else has the lock
   end
@@ -47,12 +47,12 @@ Or (equivalent)
 lock = RedisLock.new
 if lock.acquire
   begin
-    do_exclusive_stuff # you are the one
+    do_exclusive_stuff # you are the one with the lock, hooray!
   ensure
-    lock.release # someone else has the lock
+    lock.release
   end
 else
-  oh_well
+  oh_well # someone else has the lock
 end
 ```
 
@@ -72,13 +72,13 @@ But the second alternative is a little more flexible.
 Configure the default values with `RedisLock.configure`:
 
 ```ruby
-RedisLock.configure do |default|
-  default.redis = Redis.new
-  default.key = "RedisLock::default"
-  default.autorelease = 10.0
-  default.retry = true
-  default.retry_timeout = 10.0
-  default.retry_sleep = 0.1
+RedisLock.configure do |defaults|
+  defaults.redis = Redis.new
+  defaults.key = "RedisLock::default"
+  defaults.autorelease = 10.0
+  defaults.retry = true
+  defaults.retry_timeout = 10.0
+  defaults.retry_sleep = 0.1
 end
 ```
 
@@ -115,13 +115,13 @@ If we have a `PhotoBooth` shared resource, we can use a `RedisLock` to ensure it
 require 'mario-redis-lock'
 require 'photo_booth' # made up shared resource
 
-RedisLock.configure do |conf|
-  conf.redis = {url: "redis://:p4ssw0rd@10.0.1.1:6380/15"}
-  conf.key   = 'photo_booth_lock'
+RedisLock.configure do |c|
+  c.redis = {url: "redis://:p4ssw0rd@10.0.1.1:6380/15"}
+  c.key   = 'photo_booth_lock'
 
-  conf.autorelease   = 60 # assume it never takes more than one minute to make a picture
-  conf.retry_timeout = 300 # retry for 5 minutes
-  conf.retry_sleep   = 1   # retry once every second
+  c.autorelease   = 60 # assume it never takes more than one minute to make a picture
+  c.retry_timeout = 300 # retry for 5 minutes
+  c.retry_sleep   = 1   # retry once every second
 end
 
 RedisLock.acquire do |lock|
@@ -184,37 +184,35 @@ require 'redis'
 require 'mario-redis-lock'
 redis = Redis.new(url: "redis://:p4ssw0rd@host:6380")
 
-val = nil
-tries = 1000
-loop do
+RedisLock.configure do |c|
+  c.redis = redis
+  c.key = 'heavy_query_lock'
+  c.autorelease = 20 # assume it never takes more than 20 seconds to do the slow query
+  c.retry = false # try to acquire only once, if the lock is already taken then the new value should be cached again soon
+end
+
+def fetch_with_lock(retries = 10)
   val = fetch redis, 'heavy_query', 10 do
-    # Use a lock to make sure only one thread makes the heavy_database_query
-    RedisLock.acquire({
-      redis: redis,
-      key: 'heavy_query_lock',
-      autorelease: 20 # assume it never takes more than 20 seconds to do the slow query
-      retry: false # try to acquire only once, if the lock is already taken then the new value should be cached again soon
-    }) do |lock|
+    # If we need to recalculate val,
+    # use a lock to make sure that heavy_database_query is only done by one process
+    RedisLock.acquire do |lock|
       if lock.acquired?
-        heavy_database_query # Recalculate if not cached (SLOW, but done only by one process)
+        heavy_database_query
       else
         nil # do not store in cache and return val = nil
       end
     end
   end
 
-  if val != nil # we have a value
-    break
-
+  # Try again if cache miss, and the lock was acquired by other process.
+  if val.nil? and retries > 0
+    fetch_with_lock(retries - 1)
   else
-    break if (tries -= 1) <= 0 # we are tired of waiting for the lock
-
-    # If val could not be calculated, keep trying ...
-    # The next time the value could be already cached, or the lock could have been released.
-    sleep 1
+    val
   end
 end
 
+val = fetch_with_lock()
 puts val
 ```
 

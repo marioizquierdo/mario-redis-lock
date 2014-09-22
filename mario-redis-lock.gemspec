@@ -1,11 +1,10 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'mario/redis/lock/version'
 
 Gem::Specification.new do |spec|
   spec.name          = "mario-redis-lock"
-  spec.version       = Mario::Redis::Lock::VERSION
+  spec.version       = RedisLock::VERSION
   spec.authors       = ["Mario Izquierdo"]
   spec.email         = ["tomario@gmail.com"]
   spec.summary       = %q{Yet another distributed lock for Ruby using Redis.}

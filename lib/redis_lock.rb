@@ -1,24 +1,95 @@
-require "redis_lock/version"
+require 'redis' # redis gem required
+require 'ostruct' # OpenStruct (from stdlib)
+require 'securerandom' # SecureRandom (from stdlib)
 
-class RedisHerdLock
+class RedisLock
 
-  def self.config_defaults(opts={})
-    # ...
+  VERSION = "0.0.1"
+
+  @@defaults = OpenStruct.new({
+    redis: nil, # Redis instance with defaults
+    key: 'RedisLock::default', # Redis key to store the lock
+    autorelease: 10.0, # seconds to expire
+    retry: true, # false to only try to acquire once
+    retry_timeout: 10.0, # max number of seconds to keep doing retries if the lock is not available
+    retry_sleep: 0.1 # seconds to sleep before the nex retry
+  })
+
+  @@defaults.to_h.keys.each do |attr|
+    attr_accessor attr
+  end
+  attr_accessor :acquired_token # if the lock was successfully acquired, this is the token used to identify the lock. False otherwise.
+
+  # Configure default values
+  def self.configure
+    yield @@defaults
   end
 
+  # Acquire a lock. Use options to override defaults.
+  # This method makes sure to release the lock as soon as the block is finalized.
   def self.acquire(opts={}, &block)
-    # ...
+    lock = RedisLock.new(opts)
+    if lock.acquire
+      begin
+        block.call(lock)
+      ensure
+        lock.release
+      end
+    else
+      block.call(lock)
+    end
   end
 
   def initialize(opts={})
-    # ...
+    # Check if options are valid
+    allowed_opts = @@defaults.to_h.keys
+    invalid_opts = opts.keys - allowed_opts
+    raise ArgumentError("Invalid options: #{invalid_opts.inspect}. Please use one of #{allowed_opts.inspect} ") unless invalid_opts.empty?
+
+    # Set attributes from options and defaults
+    self.redis = opts[:redis] || @@defaults.redis || Redis.new
+    self.redis = Redis.new(redis) if redis.is_a? Hash # allow to use Redis options instead of a redis instance
+    self.key           = opts[:key] || @@defaults.key
+    self.autorelease   = opts[:autorelease] || @@defaults.autorelease
+    self.retry         = opts.include?(:retry) ? opts[:retry] : @@defaults.retry
+    self.retry_timeout = opts[:retry_timeout] || @@defaults.retry_timeout
+    self.retry_sleep   = opts[:retry_sleep] || @@defaults.retry_sleep
   end
 
-  def acquire(opts={}, &block)
-    # ...
+  # Try to acquire the lock.
+  # Retrun true on success, false on failure (someone else has the lock)
+  def acquire
+    token = SecureRandom.uuid
+    if redis.set(key, token, 'NX', 'EX', autorelease) # See lock pattern on http://redis.io/commands/SET
+      self.acquired_token = token
+    else
+      self.acquired_token = nil
+    end
+    self.acquired?
   end
 
+  # Release the lock.
+  # Returns a Symbol with the status of the operation:
+  #   * :success if properly released
+  #   * :already_released if the lock was already released or is being used by other process
+  #   * :not_acquired if the lock was not acquired (no release action was made because it was not needed)
   def release
-    # ...
+    if acquired?
+      script = 'if redis.call("get",KEYS[1]) == ARGV[1] then return redis.call("del",KEYS[1]) else return nil end'
+      ret = redis.eval(script, [key], [self.acquired_token])
+      if ret == nil
+        :already_released
+      else
+        :success
+      end
+    else
+      :not_acquired
+    end
+  end
+
+  # Check if last lock acquisition was successful.
+  # Note that it doesn't track autorelease, if the lock is naturally expired, this value will still be true.
+  def acquired?
+    !!self.acquired_token # acquired_token is only set on success
   end
 end
