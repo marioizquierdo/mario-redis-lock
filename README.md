@@ -4,7 +4,7 @@
 
 Yet another distributed lock for Ruby using Redis, with emphasis in the documentation.
 
-Requires Redis >= 2.6.12, because it uses the new syntax for SET to easily implement the robust algorithm described in the [SET command](http://redis.io/commands/set) documentation.
+Requires [redis gem](https://rubygems.org/gems/redis) >= 3.0.5 using [Redis](http://redis.io/) version >= 2.6.12, because it uses the new syntax for SET to easily implement the robust algorithm described in the [SET command](http://redis.io/commands/set) documentation.
 
 
 ## Why another redis lock gem?
@@ -12,7 +12,6 @@ Requires Redis >= 2.6.12, because it uses the new syntax for SET to easily imple
 Similar functionality is available in: [redis-mutex](https://rubygems.org/gems/redis-mutex), [mlanett-redis-lock](https://rubygems.org/gems/mlanett-redis-lock), [redis-lock](https://rubygems.org/gems/redis-lock), [jashmenn-redis-lock](https://rubygems.org/gems/jashmenn-redis-lock), [ruby_redis_lock](https://rubygems.org/gems/ruby_redis_lock), [robust-redis-lock](https://rubygems.org/gems/robust-redis-lock), [bfg-redis-lock](https://rubygems.org/gems/bfg-redis-lock), etc.
 
 But I realized that knowing exactly what's going on with those locks is not easy enough. Then I made this one to be simple but explicit, to be used with confidence in my high scale production applications.
-Also, the only code dependency is the [redis gem](https://rubygems.org/gems/redis).
 
 
 ## Installation
