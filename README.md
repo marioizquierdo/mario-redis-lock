@@ -1,6 +1,4 @@
-# RedisLock (under construction)
-
-***Version 0.0.1 is on the way ...***
+# RedisLock
 
 Yet another distributed lock for Ruby using Redis, with emphasis in the documentation.
 
