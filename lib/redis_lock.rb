@@ -4,7 +4,7 @@ require 'securerandom' # SecureRandom (from stdlib)
 class RedisLock
 
   # Gem version
-  VERSION = "1.0.0"
+  VERSION = "1.0.1"
 
   # Original defaults
   DEFAULT_ATTRS = {
