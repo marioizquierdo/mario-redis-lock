@@ -16,7 +16,8 @@ Requirements:
 
   * [Redis](http://redis.io/) >= 2.6.12
   * [redis gem](https://rubygems.org/gems/redis) >= 3.0.5
-  * Because it uses the new syntax for SET to easily implement the robust algorithm described in the [SET command documentation](http://redis.io/commands/set).
+
+The required versions are because I use the new syntax for the SET command to easily implement the robust algorithm described in the [SET command documentation](http://redis.io/commands/set).
 
 To install with bundler, add this line to your application's Gemfile:
 
@@ -83,7 +84,7 @@ RedisLock.configure do |defaults|
 end
 ```
 
-A good place to set defaults in a Rails app would be using an initializer `conf/initializers/redis_lock.rb`.
+A good place to set defaults in a Rails app would be in an initializer `conf/initializers/redis_lock.rb`.
 
 Options can be set to other than the defaults when calling `RedisLock.acquire`:
 
@@ -145,7 +146,8 @@ that happens when a cached value expires and suddenly too many threads try to ca
 
 Sometimes, the calculation takes expensive resources and it is just fine to do it from just one thread.
 
-Assume you have a `fetch` method that uses a redis instance to cache values like this:
+Assume you have a simple cache, a `fetch` function that uses a redis instance.
+
 Without the lock:
 
 ```ruby
@@ -229,4 +231,4 @@ In this case, the script could be executed from as many threads as we want at th
 5. Create new Pull Request
 
 Make sure you have installed Redis in localhost:6379. The DB 15 will be used for tests (and flushed after every test).
-There is a rake task to play with an example: rake smoke_and_pass
+There is a rake task to play with an example: `rake smoke_and_pass`

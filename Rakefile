@@ -59,7 +59,7 @@ def smoker(id)
   end
 end
 
-# Wrap text with ANSI colors, but only if fancy_format is set to true
+# Wrap text with ANSI colors
 def color_puts(id, text)
   if id < 10
     print "\033[0;3#{id+1}m#{text}\033[0m\n"
