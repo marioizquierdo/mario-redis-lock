@@ -17,15 +17,15 @@ Requirements:
   * [Redis](http://redis.io/) >= 2.6.12
   * [redis gem](https://rubygems.org/gems/redis) >= 3.0.5
 
-The required versions are because I use the new syntax for the SET command to easily implement the robust algorithm described in the [SET command documentation](http://redis.io/commands/set).
+The required versions are needed for the new syntax of the SET command, to easily implement the robust locking algorithm described in the [SET command documentation](http://redis.io/commands/set).
 
-To install with bundler, add this line to your application's Gemfile:
-
-    gem 'mario-redis-lock'
-
-Ot install it yourself as:
+Install from RubyGems:
 
     $ gem install mario-redis-lock
+
+Or include it in your project's `Gemfile` with Bundler:
+
+    gem 'mario-redis-lock', :require => 'redis_lock'
 
 
 ## Usage
