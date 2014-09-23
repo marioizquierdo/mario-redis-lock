@@ -104,8 +104,12 @@ class RedisLock
   #   * :not_acquired if the lock was not acquired (no release action was made because it was not needed)
   def release
     if acquired?
-      script = 'if redis.call("get",KEYS[1]) == ARGV[1] then return redis.call("del",KEYS[1]) else return nil end'
-      ret = redis.eval(script, [key], [self.acquired_token])
+      if redis.respond_to? :eval # if eval command is available, run a lua script because is a faster way to remove the key
+        script = 'if redis.call("get",KEYS[1]) == ARGV[1] then return redis.call("del",KEYS[1]) else return nil end'
+        ret = redis.eval(script, [key], [self.acquired_token])
+      else # i.e. MockRedis doesn't have eval
+        ret = if redis.get(key) == self.acquired_token then redis.del(key) else nil end
+      end
       self.acquired_token = nil # cleanup acquired token
       if ret == nil
         :already_released
