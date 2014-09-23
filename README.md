@@ -229,3 +229,6 @@ In this case, the script could be executed from as many threads as we want at th
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
+
+Make sure you have installed Redis in localhost:6379. The DB 15 will be used for tests (and flushed after every test).
+There is a rake task to play with an example: rake smoke_and_pass

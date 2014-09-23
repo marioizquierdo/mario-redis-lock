@@ -44,7 +44,7 @@ def smoker(id)
       color_puts id, "joint >> Thread##{id} grabs the joint from the table"
       sleep (rand < 0.5 ? 0.3 : 0.4) # SMOKE for 0.3 or 0.4 seconds
       if rand < 0.1
-        color_puts id, "CRASH!!! Thread##{id} DIED while smoking. The joint didn't come back to the table... wait for autorelease"
+        color_puts id, "CRASH!!! Thread##{id} DIED while smoking. The joint will come back to the table when autoreleased"
         break
       else
         color_puts id, "      << Thread##{id} returs the joint to the table\n"
