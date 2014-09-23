@@ -4,23 +4,27 @@
 
 Yet another distributed lock for Ruby using Redis, with emphasis in the documentation.
 
-Requires [redis gem](https://rubygems.org/gems/redis) >= 3.0.5 using [Redis](http://redis.io/) version >= 2.6.12, because it uses the new syntax for SET to easily implement the robust algorithm described in the [SET command](http://redis.io/commands/set) documentation.
-
 
 ## Why another redis lock gem?
 
-Similar functionality is available in: [redis-mutex](https://rubygems.org/gems/redis-mutex), [mlanett-redis-lock](https://rubygems.org/gems/mlanett-redis-lock), [redis-lock](https://rubygems.org/gems/redis-lock), [jashmenn-redis-lock](https://rubygems.org/gems/jashmenn-redis-lock), [ruby_redis_lock](https://rubygems.org/gems/ruby_redis_lock), [robust-redis-lock](https://rubygems.org/gems/robust-redis-lock), [bfg-redis-lock](https://rubygems.org/gems/bfg-redis-lock), etc.
+Other redis locks for ruby: [redis-mutex](https://rubygems.org/gems/redis-mutex), [mlanett-redis-lock](https://rubygems.org/gems/mlanett-redis-lock), [redis-lock](https://rubygems.org/gems/redis-lock), [jashmenn-redis-lock](https://rubygems.org/gems/jashmenn-redis-lock), [ruby_redis_lock](https://rubygems.org/gems/ruby_redis_lock), [robust-redis-lock](https://rubygems.org/gems/robust-redis-lock), [bfg-redis-lock](https://rubygems.org/gems/bfg-redis-lock), etc.
 
-But I realized that knowing exactly what's going on with those locks is not easy enough. Then I made this one to be simple but explicit, to be used with confidence in my high scale production applications.
+Looking at those other gems I realized that it was not easy to know what was exactly going on with the locks. Then I made this one to be simple but explicit, to be used with confidence in my high scale production applications.
 
 
 ## Installation
 
-Add this line to your application's Gemfile to install it with `bundle install`:
+Requirements:
+
+  * [Redis](http://redis.io/) >= 2.6.12
+  * [redis gem](https://rubygems.org/gems/redis) >= 3.0.5
+  * Because it uses the new syntax for SET to easily implement the robust algorithm described in the [SET command documentation](http://redis.io/commands/set).
+
+To install with bundler, add this line to your application's Gemfile:
 
     gem 'mario-redis-lock'
 
-Or install it yourself as:
+Ot install it yourself as:
 
     $ gem install mario-redis-lock
 
@@ -111,7 +115,7 @@ end
 If we have a `PhotoBooth` shared resource, we can use a `RedisLock` to ensure it is used only by one thread at a time:
 
 ```ruby
-require 'mario-redis-lock'
+require 'redis_lock'
 require 'photo_booth' # made up shared resource
 
 RedisLock.configure do |c|
@@ -180,7 +184,7 @@ Avoid this problem with a `RedisLock`:
 
 ```ruby
 require 'redis'
-require 'mario-redis-lock'
+require 'redis_lock'
 redis = Redis.new(url: "redis://:p4ssw0rd@host:6380")
 
 RedisLock.configure do |c|

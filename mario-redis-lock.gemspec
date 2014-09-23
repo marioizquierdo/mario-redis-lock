@@ -2,6 +2,8 @@
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
+require 'redis_lock'
+
 Gem::Specification.new do |spec|
   spec.name          = "mario-redis-lock"
   spec.version       = RedisLock::VERSION
