@@ -109,34 +109,50 @@ if lock.acquire
 end
 ```
 
-### Example: Shared Photo Booth that can only take one photo at a time
+### Example: Everybody wants a drink but there is only one waiter
 
-If we have a `PhotoBooth` shared resource, we can use a `RedisLock` to ensure it is used only by one thread at a time:
+This example can be copy-pasted, just make sure you have redis in localhost and the mario-redis-lock gem installed.
 
 ```ruby
 require 'redis_lock'
-require 'photo_booth' # made up shared resource
 
-RedisLock.configure do |c|
-  c.redis = {url: "redis://:p4ssw0rd@10.0.1.1:6380/15"}
-  c.key   = 'photo_booth_lock'
+N = 15 # how many people is in the bar
+puts "Starting ... #{N} new thirsty customers want to drink ..."
+puts
 
-  c.autorelease   = 60 # assume it never takes more than one minute to make a picture
-  c.retry_timeout = 300 # retry for 5 minutes
-  c.retry_sleep   = 1   # retry once every second
+RedisLock.configure do |conf|
+  conf.retry_sleep = 1    # call the waiter every second
+  conf.retry_timeout = 10 # wait up to 10 seconds before giving up
+  conf.autorelease = 3    # if someone can not be serverd in 3 seconds, assume is dead and go to next customer
 end
 
-RedisLock.acquire do |lock|
-  if lock.acquired?
-    PhotoBooth.take_photo
-  else
-    raise "I'm bored of waiting and I'm getting out"
+# Code for a single Thread#i
+def try_to_get_a_drink(i)
+  name = "Thread##{i}"
+  RedisLock.acquire do |lock|
+    if lock.acquired?
+      puts "<< #{name} gets barman's attention (lock acquired)"
+      sleep 0.2 # time do decide
+      drink = %w(water soda beer wine wiskey)[rand 5]
+      puts ".. #{name} decides to drink #{drink}"
+      sleep 0.4 # time for the waiter to serve the drink
+      puts ">> #{name} has the #{drink} and leaves happy"
+      puts
+    else
+      puts "!! #{name} is bored of waiting and leaves angry (timeout)"
+    end
   end
 end
+
+# Start N threads that will be executed in parallel
+threads = []
+N.times(){|i| threads << Thread.new(){ try_to_get_a_drink(i) }}
+threads.each{|thread| thread.join} # do not exit until all threads are done
+
+puts "DONE"
 ```
 
-This script can be executed from many different places at the same time, as far as they have access to the shared PhotoBooth and Redis instances. Only one photo will be taken at a time.
-Note that the options `autorelease`, `retry_timeout` and `retry_sleep` should be tuned differently depending on the frequency of the operation and the known speed of the `PhotoBooth.take_photo` operation.
+It uses threads for concurrency, but you can also execute this script from different places at the same time in parallel, they will all be in sync as far as they use the same redis instance.
 
 
 ### Example: Avoid the Dog-Pile effec when invalidating some cached value
@@ -155,12 +171,11 @@ Without the lock:
 # If the key is not available, execute the block
 # and store the new calculated value in the redis key with an expiration time.
 def fetch(redis, key, expire, &block)
-  val = redis.get(key)
-  if not val
+  redis.get(key) or (
     val = block.call
-    redis.setex(key, expire, val) unless val.nil? # do not set anything if the value is nil
-  end
-  val
+    redis.setex(key, expire, val) unless val # skip if the block returns nil or false
+    val
+  )
 end
 ```
 
