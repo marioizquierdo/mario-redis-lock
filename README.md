@@ -173,7 +173,7 @@ Without the lock:
 def fetch(redis, key, expire, &block)
   redis.get(key) or (
     val = block.call
-    redis.setex(key, expire, val) unless val # skip if the block returns nil or false
+    redis.setex(key, expire, val) if val
     val
   )
 end
@@ -185,57 +185,87 @@ For example, if you want to do a `heavy_database_query`:
 ```ruby
 require 'redis'
 redis = Redis.new(url: "redis://:p4ssw0rd@host:6380")
+expire = 60 # keep the result cached for 1 minute
+key = 'heavy_query'
 
-val = fetch redis, 'heavy_query', 10 do
+val = fetch redis, key, expire do
   heavy_database_query # Recalculate if not cached (SLOW)
 end
 
 puts val
 ```
 
-But this fetch could block the database if executed from too many threads, because when the Redis key expires all of them will do the `heavy_database_query` at the same time.
+But this fetch could block the database if executed from too many threads, because when the Redis key expires all of them will do the same "heavy_database_query" at the same time.
 
-Avoid this problem with a `RedisLock`:
+To avoid this problem, you can make a `fetch_with_lock` method using a `RedisLock`:
+
+```ruby
+# Retrieve the cached value from the redis key.
+# If the key is not available, execute the block
+# and store the new calculated value in the redis key with an expiration time.
+# The block is executed with a RedisLock to avoid the dog pile effect.
+# Use the following options:
+#   * :retry_timeout => (default 10) Seconds to stop trying to get the value from redis or the lock.
+#   * :retry_sleep => (default 0.1) Seconds to sleep (block the process) between retries.
+#   * :lock_autorelease => (default same as :retry_timeout) Maximum time in seconds to execute the block. The lock is released after this, assuming that the process failed.
+#   * :lock_key => (default "#{key}_lock") The key used for the lock.
+def fetch_with_lock(redis, key, expire, opts={}, &block)
+  # Options
+  opts[:retry_timeout] ||= 10
+  opts[:retry_sleep] ||= 0.1
+  opts[:first_try_time] ||= Time.now # used as memory for next retries
+  opts[:lock_key] ||= "#{key}_lock"
+  opts[:lock_autorelease] ||= opts[:retry_timeout]
+
+  # Try to get from redis.
+  val = redis.get(key)
+  return val if val
+
+  # If not in redis, calculate the new value (block.call), but with a RedisLock.
+  RedisLock.acquire({
+    redis: redis,
+    key: opts[:lock_key],
+    autorelease: opts[:lock_autorelease],
+    retry: false,
+  }) do |lock|
+    if lock.acquired?
+      val = block.call # execute block, load/calculate heavy stuff
+      redis.setex(key, expire, val) if val # store in the redis cache
+    end
+  end
+  return val if val
+
+  # If the lock was not available, then someone else was already re-calculating the value.
+  # Just wait a little bit and try again.
+  if (Time.now - opts[:first_try_time]) < opts[:retry_timeout] # unless timed out
+    sleep opts[:retry_sleep]
+    return fetch_with_lock(redis, key, expire, opts, &block)
+  end
+
+  # If the lock is still unavailable after the timeout, desist and return nil.
+  nil
+end
+
+```
+
+Now with this new method, is easy to do the "heavy_database_query", cached in redis and with a lock:
+
 
 ```ruby
 require 'redis'
 require 'redis_lock'
 redis = Redis.new(url: "redis://:p4ssw0rd@host:6380")
+expire = 60 # keep the result cached for 1 minute
+key = 'heavy_query'
 
-RedisLock.configure do |c|
-  c.redis = redis
-  c.key = 'heavy_query_lock'
-  c.autorelease = 20 # assume it never takes more than 20 seconds to do the slow query
-  c.retry = false # try to acquire only once, if the lock is already taken then the new value should be cached again soon
+val = fetch_with_lock redis, key, expire, retry_timeout: 10, retry_sleep: 1 do
+  heavy_database_query # Recalculate if not cached (SLOW)
 end
 
-def fetch_with_lock(retries = 10)
-  val = fetch redis, 'heavy_query', 10 do
-    # If we need to recalculate val,
-    # use a lock to make sure that heavy_database_query is only done by one process
-    RedisLock.acquire do |lock|
-      if lock.acquired?
-        heavy_database_query
-      else
-        nil # do not store in cache and return val = nil
-      end
-    end
-  end
-
-  # Try again if cache miss, and the lock was acquired by other process.
-  if val.nil? and retries > 0
-    fetch_with_lock(retries - 1)
-  else
-    val
-  end
-end
-
-val = fetch_with_lock()
 puts val
 ```
 
-In this case, the script could be executed from as many threads as we want at the same time, because the heavy_database_query is done only once while the other threads wait until the value is cached again or the lock is released.
-
+In this case, the script could be executed from as many threads as we want at the same time, because the "heavy_database_query" is done only once while the other threads wait until the value is cached again or the lock is released.
 
 ## Contributing
 
