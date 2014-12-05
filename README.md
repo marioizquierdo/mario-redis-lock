@@ -33,7 +33,7 @@ Or include it in your project's `Gemfile` with Bundler:
 Acquire the lock to do "exclusive stuff":
 
 ```ruby
-RedisLock.adquire do |lock|
+RedisLock.acquire do |lock|
   if lock.acquired?
     do_exclusive_stuff # you are the one with the lock, hooray!
   else
@@ -58,7 +58,7 @@ else
 end
 ```
 
-The class method `RedisLock.adquire(options, &block)` is more concise and releases the lock at the end of the block, even if `do_exclusive_stuff` raises an exception.
+The class method `RedisLock.acquire(options, &block)` is more concise and releases the lock at the end of the block, even if `do_exclusive_stuff` raises an exception.
 But the second alternative is a little more flexible.
 
 
@@ -69,7 +69,7 @@ But the second alternative is a little more flexible.
   * **autorelease**: (default `10.0`) seconds to automatically release (expire) the lock after being acquired. Make sure to give enough time for your "exclusive stuff" to be executed, otherwise other processes could get the lock and start messing with the "exclusive stuff" before this one is done. The autorelease time is important, even when manually doing `lock.realease`, because the process could crash before releasing the lock. Autorelease (expiration time) guarantees that the lock will always be released.
   * **retry**: (default `true`) boolean to enable/disable consecutive acquire retries in the same `acquire` call. If true, use `retry_timeout` and `retry_sleep` to specify how long and hot often should the `acquire` method be blocking the thread until is able to get the lock.
   * **retry_timeout**: (default `10.0`) time in seconds to specify how long should this thread be waiting for the lock to be released. Note that the execution thread is put to sleep while waiting. For a non-blocking approach, set `retry` to false.
-  * **retry_sleep**: (default `0.1`) seconds to sleep between retries. For example: `RedisLock.adquire(retry_timeout: 10.0, retry_sleep: 0.1) do |lock|`, in the worst case scenario, will do 99 or 100 retries (one every 100 milliseconds, plus a little extra for the acquire attempt) during 10 seconds, and finally yield with `lock.acquired? == false`.
+  * **retry_sleep**: (default `0.1`) seconds to sleep between retries. For example: `RedisLock.acquire(retry_timeout: 10.0, retry_sleep: 0.1) do |lock|`, in the worst case scenario, will do 99 or 100 retries (one every 100 milliseconds, plus a little extra for the acquire attempt) during 10 seconds, and finally yield with `lock.acquired? == false`.
 
 Configure the default values with `RedisLock.configure`:
 
