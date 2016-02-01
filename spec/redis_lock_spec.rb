@@ -28,7 +28,7 @@ describe RedisLock do
   end
 
 
-  describe "configure" do
+  describe ".configure" do
     it "changes the defaults" do
       RedisLock.configure do |conf|
         conf.key = "mykey"
@@ -53,10 +53,12 @@ describe RedisLock do
     end
   end
 
-  describe "acquire" do
+  describe ".acquire" do
     describe "with bad redis connection" do
       it "raises a Redis::CannotConnectError" do
-        proc { RedisLock.acquire(redis: {url: "redis://localhost:1111/15"}){|l| }}.must_raise Redis::CannotConnectError
+        proc {
+          RedisLock.acquire(redis: {url: "redis://localhost:1111/15"}){|lock| }
+        }.must_raise Redis::CannotConnectError
       end
     end
 
@@ -81,6 +83,11 @@ describe RedisLock do
         lock.key.must_equal 'override'
         lock.autorelease.must_equal 5555
       end
+    end
+    it "does not allow to pass a block with no |lock|" do
+      proc {
+        RedisLock.acquire(){ puts "I should not have been printed" }
+      }.must_raise ArgumentError, "You should use lock"
     end
   end
 

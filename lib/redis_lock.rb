@@ -37,15 +37,18 @@ class RedisLock
   # Acquire a lock. Use options to override defaults.
   # This method makes sure to release the lock as soon as the block is finalized.
   def self.acquire(opts={}, &block)
+    if block.arity != 1
+      raise ArgumentError.new('Expected lock parameter in block. Example: RedisLock.acquire(opts){|lock| do_stuff if lock.acquired? }')
+    end
     lock = RedisLock.new(opts)
     if lock.acquire
       begin
-        block.call(lock)
+        block.call(lock) # lock.acquired? => true
       ensure
-        lock.release
+        lock.release # Exception => release early
       end
     else
-      block.call(lock)
+      block.call(lock) # lock.acquired? => false
     end
   end
 
@@ -58,11 +61,12 @@ class RedisLock
     # Set attributes from options or defaults
     self.redis = opts[:redis] || @@config.redis || Redis.new
     self.redis = Redis.new(redis) if redis.is_a? Hash # allow to use Redis options instead of a redis instance
-    self.key           = opts[:key] || @@config.key
-    self.autorelease   = opts[:autorelease] || @@config.autorelease
+
+    self.key           = opts[:key]           || @@config.key
+    self.autorelease   = opts[:autorelease]   || @@config.autorelease
     self.retry         = opts.include?(:retry) ? opts[:retry] : @@config.retry
     self.retry_timeout = opts[:retry_timeout] || @@config.retry_timeout
-    self.retry_sleep   = opts[:retry_sleep] || @@config.retry_sleep
+    self.retry_sleep   = opts[:retry_sleep]   || @@config.retry_sleep
   end
 
   # Try to acquire the lock.
