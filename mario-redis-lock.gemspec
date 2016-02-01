@@ -9,8 +9,8 @@ Gem::Specification.new do |spec|
   spec.version       = RedisLock::VERSION
   spec.authors       = ["Mario Izquierdo"]
   spec.email         = ["tomario@gmail.com"]
-  spec.summary       = %q{Yet another distributed lock for Ruby using Redis.}
-  spec.description   = %q{Yet another distributed lock for Ruby using Redis, with emphasis in the documentation. Requires Redis >= 2.6.12, because it uses the new syntax for SET to easily implement the robust algorithm described in the SET command documentation (http://redis.io/commands/set).}
+  spec.summary       = %q{Yet another Ruby distributed lock using Redis, with emphasis in transparency.}
+  spec.description   = %q{Yet another Ruby distributed lock using Redis, with emphasis in transparency. Requires Redis >= 2.6.12, because it uses the new syntax for SET to easily implement the robust algorithm described in the SET command documentation (http://redis.io/commands/set).}
   spec.homepage      = "https://github.com/marioizquierdo/mario-redis-lock"
   spec.license       = "MIT"
 
@@ -19,8 +19,8 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.add_runtime_dependency 'redis', '>= 3.0.5' # Needed support for SET with EX, PX, NX, XX options: https://github.com/redis/redis-rb/pull/343
+  spec.add_runtime_dependency 'redis', '~> 3', '>= 3.0.5' # Needed support for SET with EX, PX, NX, XX options: https://github.com/redis/redis-rb/pull/343
 
-  spec.add_development_dependency "bundler", ">= 1.5"
-  spec.add_development_dependency "rake"
+  spec.add_development_dependency 'bundler', '~> 1'
+  spec.add_development_dependency 'rake', '~> 10'
 end
