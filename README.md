@@ -12,7 +12,7 @@ It has the properties:
 
   * Mutual exclusion: At any given moment, only one client can hold a lock
   * Deadlock free: Eventually it is always possible to acquire a lock, even if the client that locked a resource crashed or gets partitioned
-  * NOT fault tolerant: if the REDIS instance goes down, the lock doesn't work. For a lock wiht liveness guarantee, see (redlock-rb)[https://github.com/antirez/redlock-rb], that can use multiple REDIS instances to handle the lock.
+  * NOT fault tolerant: if the REDIS instance goes down, the lock doesn't work. For a lock wiht liveness guarantee, see [redlock-rb](https://github.com/antirez/redlock-rb), that can use multiple REDIS instances to handle the lock.
 
 
 ## Installation
@@ -83,7 +83,7 @@ The second alternative is a little more flexible.
 Options can be set to other than the defaults when calling `RedisLock.acquire`:
 
 ```ruby
-RedisLock.acquire(key: 'exclusive_stuff', retry: false) do |lock
+RedisLock.acquire(key: 'exclusive_stuff', retry: false) do |lock|
   if lock.acquired?
     do_exclusive_stuff
   end
@@ -97,6 +97,7 @@ lock = RedisLock.new(key: 'exclusive_stuff', retry: false, autorelease: 0.1)
 if lock.acquire
   do_exclusive_stuff_or_not
 end
+```
 
 You can also configure default values with `RedisLock.configure`:
 
@@ -116,7 +117,7 @@ A good place to set defaults in a Rails app would be in an initializer like `con
 
 ## Why another Redis lock gem?
 
-There are other Redis locks for Ruby: [redis-mutex](https://rubygems.org/gems/redis-mutex), [mlanett-redis-lock](https://rubygems.org/gems/mlanett-redis-lock), [redis-lock](https://rubygems.org/gems/redis-lock), [jashmenn-redis-lock](https://rubygems.org/gems/jashmenn-redis-lock), [ruby_redis_lock](https://rubygems.org/gems/ruby_redis_lock), [robust-redis-lock](https://rubygems.org/gems/robust-redis-lock), [bfg-redis-lock](https://rubygems.org/gems/bfg-redis-lock), etc.
+There are other Redis locks for Ruby: [redlock-rb](https://github.com/antirez/redlock-rb), [redis-mutex](https://rubygems.org/gems/redis-mutex), [mlanett-redis-lock](https://rubygems.org/gems/mlanett-redis-lock), [redis-lock](https://rubygems.org/gems/redis-lock), [jashmenn-redis-lock](https://rubygems.org/gems/jashmenn-redis-lock), [ruby_redis_lock](https://rubygems.org/gems/ruby_redis_lock), [robust-redis-lock](https://rubygems.org/gems/robust-redis-lock), [bfg-redis-lock](https://rubygems.org/gems/bfg-redis-lock), etc.
 
 I realized I was not sure how most of them exactly work. What is exactly going on with the lock? When does it expire? How many times needs to retry? Is the thread put to sleep meanwhile?.
 By the time I learned how to tell if a lock is good or not, I learned enough to write my own, making it simple but explicit, to be used with confidence in my high scale production applications.
