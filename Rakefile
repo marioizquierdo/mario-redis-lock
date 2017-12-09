@@ -1,5 +1,6 @@
 require "bundler/gem_tasks"
 require "rake/testtask"
+require "redis_lock"
 
 Rake::TestTask.new do |t|
   t.pattern = "spec/**/*_spec.rb"

@@ -1,10 +1,8 @@
 require 'redis' # redis gem required
 require 'securerandom' # SecureRandom (from stdlib)
+require 'redis_lock/version'
 
 class RedisLock
-
-  # Gem version
-  VERSION = "1.2.0"
 
   # Original defaults
   DEFAULT_ATTRS = {
