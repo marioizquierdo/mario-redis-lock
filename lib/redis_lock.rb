@@ -1,4 +1,4 @@
-require 'redis' # redis gem required
+require 'redis'
 require 'securerandom' # SecureRandom (from stdlib)
 require 'redis_lock/version'
 
